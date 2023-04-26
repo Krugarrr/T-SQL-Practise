@@ -1,9 +1,9 @@
 WITH
-  ProductInfo (Customer, SalesOrder, ProductCount, ProductID)
+  ProductInfo (Customer, ProductID)
 AS
   (
     SELECT
-      CustomerID AS Customer, SOD.SalesOrderID AS SalesOrder, CHECKSUM_AGG(ProductID), ProductID
+      SOH.CustomerID as Customer, SOD.ProductID
     FROM
       Sales.SalesOrderDetail AS SOD
     JOIN
@@ -11,31 +11,29 @@ AS
     ON
       SOD.SalesOrderID = SOH.SalesOrderID
     GROUP BY
-        CustomerID, SOD.SalesOrderID, ProductID
+        SOH.CustomerID, SOD.ProductID
+    HAVING COUNT(*) > 1
   ),
-Counter (Customer, SalesOrder, ProductCount, ProductID)
+Counter (Customer)
 AS
     (
     SELECT
-        PI1.Customer, PI1.SalesOrder, PI1.ProductCount, PI1.ProductID
+        CustomerID AS Customer
     FROM
-        ProductInfo AS PI1
-    WHERE PI1.ProductID IN
-         (
-                              SELECT
-                                ProductID
-                              FROM
-                                  ProductInfo AS PI2
-                              WHERE
-                                  PI1.Customer = PI2.Customer
-                                AND
-                                  PI1.SalesOrder != PI2.SalesOrder
-                            )
+        Sales.SalesOrderHeader AS SOH
+    JOIN
+        Sales.SalesOrderDetail AS SOD
+    ON SOH.SalesOrderID = SOD.SalesOrderID
+    GROUP BY SOH.CustomerID, SOD.ProductID
+    HAVING COUNT(*) = 1
     )
 
+
 SELECT
-    DISTINCT Customer
+     DISTINCT Customer
 FROM
-    Counter
+    ProductInfo
+WHERE
+    Customer NOT IN (SELECT * FROM Counter)
 ORDER BY
     Customer
