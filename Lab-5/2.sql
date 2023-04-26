@@ -1,39 +1,40 @@
 WITH
-  ProductInfo (Customer, ProductID)
+	CIPIPC (CustomerID, ProductID, ProductCount)
 AS
-  (
-    SELECT
-      SOH.CustomerID as Customer, SOD.ProductID
-    FROM
-      Sales.SalesOrderDetail AS SOD
-    JOIN
-      Sales.SalesOrderHeader AS SOH
-    ON
-      SOD.SalesOrderID = SOH.SalesOrderID
-    GROUP BY
-        SOH.CustomerID, SOD.ProductID
-    HAVING COUNT(*) > 1
-  ),
-Counter (Customer)
-AS
-    (
-    SELECT
-        CustomerID AS Customer
-    FROM
-        Sales.SalesOrderHeader AS SOH
-    JOIN
-        Sales.SalesOrderDetail AS SOD
-    ON SOH.SalesOrderID = SOD.SalesOrderID
-    GROUP BY SOH.CustomerID, SOD.ProductID
-    HAVING COUNT(*) = 1
-    )
+	(
+		SELECT
+			CustomerID, ProductID, COUNT(*) AS ProductCount
+		FROM
+			Sales.SalesOrderDetail AS SOD
+		JOIN
+			Sales.SalesOrderHeader AS SOH
+		ON
+			SOD.SalesOrderID = SOH.SalesOrderID
+		GROUP BY
+			CustomerID, ProductID
+	),
 
+OrderCount (CustomerID, SalesOrderID, ProductCount)
+AS
+	(
+		SELECT
+			CustomerID, SOD.SalesOrderID, COUNT(ProductID) AS ProductCount
+		FROM
+			Sales.SalesOrderDetail AS SOD
+		JOIN
+			Sales.SalesOrderHeader AS SOH
+		ON
+			SOD.SalesOrderID = SOH.SalesOrderID
+		GROUP BY
+			CustomerID, SOD.SalesOrderID
+	)
 
 SELECT
-     DISTINCT Customer
+	OrderCount.CustomerID, (OrderCount.ProductCount / CIPIPC.ProductCount)
 FROM
-    ProductInfo
-WHERE
-    Customer NOT IN (SELECT * FROM Counter)
-ORDER BY
-    Customer
+	OrderCount
+JOIN
+    CIPIPC
+ON
+    CIPIPC.CustomerID = OrderCount.CustomerID
+WHERE OrderCount.ProductCount != 0
